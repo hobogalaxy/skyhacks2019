@@ -110,3 +110,6 @@ data/
 
 # pycharm
 .idea
+
+# tensorflow
+logs/
