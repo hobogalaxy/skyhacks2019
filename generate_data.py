@@ -7,12 +7,19 @@ import csv
 import os
 
 
-bathroom_path = "data/main_task_data/bathroom"
-bedroom_path = "data/main_task_data/bedroom"
-dining_room_path = "data/main_task_data/dinning_room"
-house_path = "data/main_task_data/house"
-kitchen_path = "data/main_task_data/kitchen"
-living_room_path = "data/main_task_data/living_room"
+# bathroom_path = "data/main_task_data/bathroom"
+# bedroom_path = "data/main_task_data/bedroom"
+# dining_room_path = "data/main_task_data/dinning_room"
+# house_path = "data/main_task_data/house"
+# kitchen_path = "data/main_task_data/kitchen"
+# living_room_path = "data/main_task_data/living_room"
+
+bathroom_path = "data/data_augmented/bathroom"
+bedroom_path = "data/data_augmented/bedroom"
+dining_room_path = "data/data_augmented/dinning_room"
+house_path = "data/data_augmented/house"
+kitchen_path = "data/data_augmented/kitchen"
+living_room_path = "data/data_augmented/living_room"
 
 
 def load_images(path):
@@ -21,7 +28,7 @@ def load_images(path):
     for filename in glob.glob(path + "/*.jpg"):
         img = load_img(filename)
 
-        img = img.resize((100, 100))  # moze tu lepszy bedzie PCA
+        img = img.resize((200, 200))  # moze tu lepszy bedzie PCA
         img = np.asarray(img)
 
         image_list.append(img)
@@ -70,9 +77,9 @@ def adjust_order(images_list, image_names, labels):
 
 
 def save(images, labels):
-    with open('data/main_task_data/images200x200', 'wb') as f:
+    with open('data/generated_data/images200x200augmented', 'wb') as f:
         pickle.dump(images, f)
-    with open('data/main_task_data/labels', 'wb') as f:
+    with open('data/generated_data/labels', 'wb') as f:
         pickle.dump(labels, f)
 
 
