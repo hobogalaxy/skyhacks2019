@@ -1,0 +1,1 @@
+{'real estate', 'bedroom', 'bed', 'building', 'restaurant', 'palace', 'mattress', 'white', 'house', 'bed frame', 'furniture', 'interior design', 'function hall', 'ballroom', 'room', 'home', 'bedding', 'duvet cover', 'pink', 'table', 'dining room', 'property', 'ceiling', 'kitchen', 'bed sheet', 'floor'}
