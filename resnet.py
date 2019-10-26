@@ -70,6 +70,7 @@ def identity_building_block(input_tensor,
                                bias_regularizer=
                                tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
                                name=conv_name_base + '2a')(input_tensor)
+
     x = tf.keras.layers.BatchNormalization(axis=bn_axis,
                                            name=bn_name_base + '2a',
                                            momentum=BATCH_NORM_DECAY,
