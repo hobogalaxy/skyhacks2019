@@ -1,98 +1,122 @@
-import datetime
-
+import pickle
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.callbacks import TensorBoard, LearningRateScheduler
-
-import resnet
-
-NUM_GPUS = 1
-BS_PER_GPU = 128
-NUM_EPOCHS = 60
-
-HEIGHT = 32
-WIDTH = 32
-NUM_CHANNELS = 3
-NUM_CLASSES = 10
-NUM_TRAIN_SAMPLES = 50000
-
-BASE_LEARNING_RATE = 0.1
-LR_SCHEDULE = [(0.1, 30), (0.01, 45)]
+import matplotlib.pyplot as plt
+import sys
+import numpy
+numpy.set_printoptions(threshold=sys.maxsize)
 
 
-# def preprocess(x, y):
-#     x = tf.image.per_image_standardization(x)
-#     return x, y
-#
-#
-# def augmentation(x, y):
-#     x = tf.image.resize_with_crop_or_pad(
-#         x, HEIGHT + 8, WIDTH + 8)
-#     x = tf.image.random_crop(x, [HEIGHT, WIDTH, NUM_CHANNELS])
-#     x = tf.image.random_flip_left_right(x)
-#     return x, y
+VALIDATION_SPLIT = 0.4
+EPOCHS = 10
+BATCH_SIZE = 64
+opt = keras.optimizers.Adam(learning_rate=0.001)
+
+img_path = 'data/generated_data/images200x200'
+label_path = 'data/generated_data/labels'
+
+ORDER = [0,4,3,1,5,2,4,1,3,4,5,0,0,2,1,0,3,0,5,5,1,2,1,3,2,4,3,4,2,5]
+print(len(ORDER))
 
 
-def schedule(epoch):
-    initial_learning_rate = BASE_LEARNING_RATE * BS_PER_GPU / 128
-    learning_rate = initial_learning_rate
-    for mult, start_epoch in LR_SCHEDULE:
-        if epoch >= start_epoch:
-            learning_rate = initial_learning_rate * mult
-        else:
-            break
-    # tf.summary.scalar('learning rate', data=learning_rate, step=epoch)
-    return learning_rate
+def load_data():
+    with open(img_path, 'rb') as f:
+        images = pickle.load(f)
+    with open(label_path, 'rb') as f:
+        labels = pickle.load(f)
+    return images, labels
 
 
-(x, y), (x_test, y_test) = keras.datasets.cifar10.load_data()
 
-train_dataset = tf.data.Dataset.from_tensor_slices((x, y))
-test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+from keras_preprocessing.image import load_img
+import glob
+import numpy as np
+def eval_test():
+    new_model = keras.models.load_model('new_best_model.h5')
+    test_images = []
+    for filename in glob.glob("test_results_dataset/test_dataset" + "/*.jpg"):
+        img = load_img(filename)
+        img = img.resize((200, 200))
+        img = np.asarray(img)
+        # print(new_model.predict(img.reshape((1,img.shape[0],img.shape[1],3))))
+        test_images.append(img.reshape((1, img.shape[0], img.shape[1], 3)))
+        # plt.imshow(img)
+        # plt.show()
 
-# tf.random.set_seed(22)
-train_dataset = train_dataset.shuffle(NUM_TRAIN_SAMPLES).batch(BS_PER_GPU * NUM_GPUS,
-                                                                                                 drop_remainder=True)
-test_dataset = test_dataset.batch(BS_PER_GPU * NUM_GPUS, drop_remainder=True)
+    test_labels = []
+    for img in test_images:
+        test_labels.append(np.argmax(new_model.predict(img)))
 
-input_shape = (32, 32, 3)
-img_input = tf.keras.layers.Input(shape=input_shape)
-opt = keras.optimizers.SGD(lr=0.1, momentum=0.9)
+    print(test_labels)
+    print(ORDER)
+    result = [1 if test_labels[i] == ORDER[i] else 0 for i in range(len(ORDER))]
+    print(result)
+    print("sum: ", sum(result))
 
-if NUM_GPUS == 1:
-    model = resnet.resnet56(img_input=img_input, classes=NUM_CLASSES)
-    model.compile(
+
+
+
+
+eval_test()
+
+
+images, labels = load_data()
+images = tf.keras.applications.resnet50.preprocess_input(images)
+print(len(images), len(labels))
+labels = labels[:, 2]
+input_shape = (images.shape[1], images.shape[2], 3)
+
+
+from sklearn.preprocessing import LabelBinarizer
+encoder = LabelBinarizer()
+labels = encoder.fit_transform(labels)
+
+
+randomize = np.arange(len(images))
+np.random.shuffle(randomize)
+images = images[randomize]
+labels = labels[randomize]
+
+
+def get_model():
+    base_model = tf.keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape, pooling='avg')
+
+    x = base_model.output
+    x = tf.keras.layers.Dropout(0.5)(x)
+    x = tf.keras.layers.Dense(512, activation='relu',
+                          )(x)
+    x = tf.keras.layers.Dropout(0.5)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dense(128, activation='relu',
+                          )(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dense(6)(x)
+    x = tf.keras.layers.Activation("softmax")(x)
+
+    model = tf.keras.Model(inputs=base_model.input, outputs=x)
+
+    for layer in base_model.layers:
+        layer.trainable = False
+
+    return model
+
+
+model = get_model()
+model.compile(
         optimizer=opt,
-        loss='sparse_categorical_crossentropy',
-        metrics=['sparse_categorical_accuracy'])
-else:
-    mirrored_strategy = tf.distribute.MirroredStrategy()
-    with mirrored_strategy.scope():
-        model = resnet.resnet56(img_input=img_input, classes=NUM_CLASSES)
-        model.compile(
-            optimizer=opt,
-            loss='sparse_categorical_crossentropy',
-            metrics=['sparse_categorical_accuracy'])
+        loss='categorical_crossentropy',
+        metrics=['categorical_accuracy'])
 
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-# file_writer = tf.summary.create_file_writer(log_dir + "/metrics")
-# file_writer.set_as_default()
-tensorboard_callback = TensorBoard(
-    log_dir=log_dir,
-    update_freq='batch',
-    histogram_freq=1)
+checkpoint_call = tf.keras.callbacks.ModelCheckpoint('best_model.h5', monitor='val_categorical_accuracy', verbose=0,
+                                                     save_best_only=True, save_weights_only=False, mode='auto',
+                                                     period=1)
 
-lr_schedule_callback = LearningRateScheduler(schedule)
+model.fit(x=images, y=labels, validation_split=VALIDATION_SPLIT, epochs=EPOCHS, batch_size=BATCH_SIZE,
+          callbacks=[checkpoint_call], shuffle=True)
 
-model.fit(train_dataset,
-          epochs=NUM_EPOCHS,
-          validation_data=test_dataset,
-          steps_per_epoch=1,
-          callbacks=[lr_schedule_callback])
-model.evaluate(test_dataset)
+# model.save('model.h5')
 
-model.save('model.h5')
+eval_test()
 
-new_model = keras.models.load_model('model.h5')
-
-new_model.evaluate(test_dataset)
+# p = model.predict(images[0:10])
+# new_model = keras.models.load_model('model.h5')
