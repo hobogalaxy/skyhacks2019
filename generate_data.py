@@ -21,7 +21,7 @@ def load_images(path):
     for filename in glob.glob(path + "/*.jpg"):
         img = load_img(filename)
 
-        img = img.resize((400, 400))  # moze tu lepszy bedzie PCA
+        img = img.resize((100, 100))  # moze tu lepszy bedzie PCA
         img = np.asarray(img)
 
         image_list.append(img)
@@ -49,7 +49,10 @@ def adjust_order(images_list, image_names, labels):
     for img in image_names:
         try:
             label = labels[img]
-            label_list.append(label)
+            if label[2] == "validation":
+                images_to_remove.append(i)
+            else:
+                label_list.append(label)
         except KeyError:
             images_to_remove.append(i)
 
@@ -57,6 +60,8 @@ def adjust_order(images_list, image_names, labels):
 
     for index in images_to_remove:
         del images_list[index]
+        for j in range(len(images_to_remove)):
+            images_to_remove[j] -= 1
 
     images = np.array(images_list)
     labels = np.array(label_list)
@@ -65,9 +70,9 @@ def adjust_order(images_list, image_names, labels):
 
 
 def save(images, labels):
-    with open('images400x400', 'wb') as f:
+    with open('data/main_task_data/images200x200', 'wb') as f:
         pickle.dump(images, f)
-    with open('labels', 'wb') as f:
+    with open('data/main_task_data/labels', 'wb') as f:
         pickle.dump(labels, f)
 
 
