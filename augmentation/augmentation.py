@@ -58,9 +58,7 @@ def sortowanie(lista_nazw):
 
 
 def label_gen(directory_of_augmented_pics, path_to_dataset_pics):
-    directory_of_augmented_pics = "../test/"
     dataset_dataframe = pd.read_csv('./labels.csv')
-    path_to_dataset_pics = "../dataset/bedroom/"
     licznik = 0
     new_labels = pd.DataFrame(columns=dataset_dataframe.columns)
     for filename in sorted(glob.glob(path_to_dataset_pics + "/*.jpg")):
@@ -73,5 +71,5 @@ def label_gen(directory_of_augmented_pics, path_to_dataset_pics):
     new_labels.to_csv("new_labels.csv")
 
 
-# augmentate("../dataset/bedroom/",  "../test/", 5)
-label_gen("../dataset/bedroom/", "../test/")
+#augmentate("../dataset/house/",  "../test/", 5)
+label_gen("../test/", "../dataset/house/")
