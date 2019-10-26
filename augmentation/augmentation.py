@@ -22,14 +22,15 @@ def load_images(path):
     return images
 
 
-def augmentate(path, save_dir, times):
+def augmentate(path, save_dir, new_img_num):
     aug = ImageDataGenerator(
         rotation_range=20,
         width_shift_range=0.2,
         height_shift_range=0.2,
         shear_range=0.15,
         horizontal_flip=True,
-        fill_mode="nearest")
+        fill_mode="nearest",
+        brightness_range=(0.5, 1.5))
 
     images = load_images(path)
 
@@ -39,12 +40,12 @@ def augmentate(path, save_dir, times):
     total = 0
     for i in generator:
         total += 1
-        if total == times:
+        if total == new_img_num:
             break
 
 
 # now = time.time()
-# augmentate("/home/adrian/skyhacks/data/main_task_data/bathroom/",  "/home/adrian/skyhacks/test/", 1)
+augmentate("/home/adrian/skyhacks/data/main_task_data/bathroom/",  "/home/adrian/skyhacks/test/", 5)
 # end = time.time()
 
 # print(str(end - now) + "s")
