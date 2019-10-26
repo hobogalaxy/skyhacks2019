@@ -1,50 +1,70 @@
-import datetime
 import pickle
-
 import tensorflow as tf
-from keras.applications import ResNet50
 from tensorflow import keras
-from tensorflow.keras.callbacks import TensorBoard, LearningRateScheduler
-
-import resnet
-
-from sklearn.model_selection import train_test_split
-
-
 import matplotlib.pyplot as plt
-
-
 import sys
 import numpy
 numpy.set_printoptions(threshold=sys.maxsize)
 
-NUM_GPUS = 1
-BS_PER_GPU = 128
-NUM_EPOCHS = 60
 
-HEIGHT = 32
-WIDTH = 32
-NUM_CHANNELS = 3
-NUM_CLASSES = 10
-NUM_TRAIN_SAMPLES = 50000
+VALIDATION_SPLIT = 0.4
+EPOCHS = 10
+BATCH_SIZE = 64
+opt = keras.optimizers.Adam(learning_rate=0.001)
 
-BASE_LEARNING_RATE = 0.1
-LR_SCHEDULE = [(0.1, 30), (0.01, 45)]
+img_path = 'data/generated_data/images200x200'
+label_path = 'data/generated_data/labels'
+
+ORDER = [0,4,3,1,5,2,4,1,3,4,5,0,0,2,1,0,3,0,5,5,1,2,1,3,2,4,3,4,2,5]
+print(len(ORDER))
 
 
 def load_data():
-    with open('data/generated_data/images200x200', 'rb') as f:
+    with open(img_path, 'rb') as f:
         images = pickle.load(f)
-    with open('data/generated_data/labels', 'rb') as f:
+    with open(label_path, 'rb') as f:
         labels = pickle.load(f)
     return images, labels
 
 
+
+from keras_preprocessing.image import load_img
+import glob
+import numpy as np
+def eval_test():
+    new_model = keras.models.load_model('new_best_model.h5')
+    test_images = []
+    for filename in glob.glob("test_results_dataset/test_dataset" + "/*.jpg"):
+        img = load_img(filename)
+        img = img.resize((200, 200))
+        img = np.asarray(img)
+        # print(new_model.predict(img.reshape((1,img.shape[0],img.shape[1],3))))
+        test_images.append(img.reshape((1, img.shape[0], img.shape[1], 3)))
+        # plt.imshow(img)
+        # plt.show()
+
+    test_labels = []
+    for img in test_images:
+        test_labels.append(np.argmax(new_model.predict(img)))
+
+    print(test_labels)
+    print(ORDER)
+    result = [1 if test_labels[i] == ORDER[i] else 0 for i in range(len(ORDER))]
+    print(result)
+    print("sum: ", sum(result))
+
+
+
+
+
+eval_test()
+
+
 images, labels = load_data()
-
+images = tf.keras.applications.resnet50.preprocess_input(images)
 print(len(images), len(labels))
-
 labels = labels[:, 2]
+input_shape = (images.shape[1], images.shape[2], 3)
 
 
 from sklearn.preprocessing import LabelBinarizer
@@ -52,45 +72,51 @@ encoder = LabelBinarizer()
 labels = encoder.fit_transform(labels)
 
 
-# from sklearn.utils import shuffle
-# x, y = shuffle(x, y, random_state=0)
-
-# x, y = train_test_split(images, test_size=0.8)
-# test_x, test_y = train_test_split(housing_cat_1hot, test_size=0.8)
-
-
-input_shape = (200, 200, 3)
-# img_input = tf.keras.layers.Input(shape=input_shape)
-# opt = keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
+randomize = np.arange(len(images))
+np.random.shuffle(randomize)
+images = images[randomize]
+labels = labels[randomize]
 
 
-base_model = tf.keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape, pooling='avg')
+def get_model():
+    base_model = tf.keras.applications.ResNet50(include_top=False, weights='imagenet', input_shape=input_shape, pooling='avg')
 
-x = base_model.output
-x = tf.keras.layers.Dense(512, activation='relu')(x)
-x = tf.keras.layers.Dense(512, activation='relu')(x)
-x = tf.keras.layers.Dense(6, activation='relu')(x)
-x = tf.keras.layers.Activation("softmax")(x)
+    x = base_model.output
+    x = tf.keras.layers.Dropout(0.5)(x)
+    x = tf.keras.layers.Dense(512, activation='relu',
+                          )(x)
+    x = tf.keras.layers.Dropout(0.5)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dense(128, activation='relu',
+                          )(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dense(6)(x)
+    x = tf.keras.layers.Activation("softmax")(x)
 
-model = tf.keras.Model(inputs=base_model.input, outputs=x)
+    model = tf.keras.Model(inputs=base_model.input, outputs=x)
+
+    for layer in base_model.layers:
+        layer.trainable = False
+
+    return model
 
 
-for layer in base_model.layers:
-    layer.trainable = False
-
+model = get_model()
 model.compile(
-        optimizer='adam',
+        optimizer=opt,
         loss='categorical_crossentropy',
         metrics=['categorical_accuracy'])
 
-model.fit(x=images, y=labels, epochs=60, batch_size=128, validation_split=0.1, shuffle=True)
+checkpoint_call = tf.keras.callbacks.ModelCheckpoint('best_model.h5', monitor='val_categorical_accuracy', verbose=0,
+                                                     save_best_only=True, save_weights_only=False, mode='auto',
+                                                     period=1)
 
+model.fit(x=images, y=labels, validation_split=VALIDATION_SPLIT, epochs=EPOCHS, batch_size=BATCH_SIZE,
+          callbacks=[checkpoint_call], shuffle=True)
 
-# model = resnet.resnet56(img_input=img_input, classes=6)
+# model.save('model.h5')
 
-# model.evaluate(test_dataset)
+eval_test()
 
-model.save('model.h5')
-
+# p = model.predict(images[0:10])
 # new_model = keras.models.load_model('model.h5')
-
