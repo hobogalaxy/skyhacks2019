@@ -62,7 +62,6 @@ def label_gen(directory_of_augmented_pics, path_to_dataset_pics):
     dataset_dataframe = pd.read_csv('./labels.csv')
     path_to_dataset_pics = "../dataset/bedroom/"
     licznik = 0
-    dictionary = {}
     new_labels = pd.DataFrame(columns=dataset_dataframe.columns)
     for filename in sorted(glob.glob(path_to_dataset_pics + "/*.jpg")):
         for aug_filename in sortowanie(glob.glob(directory_of_augmented_pics + "/*.jpg"))[5 * licznik: 5 * licznik + 5]:
@@ -74,5 +73,5 @@ def label_gen(directory_of_augmented_pics, path_to_dataset_pics):
     new_labels.to_csv("new_labels.csv")
 
 
-augmentate("../dataset/bedroom/",  "../test/", 5)
+# augmentate("../dataset/bedroom/",  "../test/", 5)
 label_gen("../dataset/bedroom/", "../test/")
