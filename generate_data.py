@@ -14,6 +14,8 @@ house_path = "data/main_task_data/house"
 kitchen_path = "data/main_task_data/kitchen"
 living_room_path = "data/main_task_data/living_room"
 
+DIMENSIONS = (200, 200)
+
 
 def load_images(path):
     image_list = []
@@ -21,7 +23,7 @@ def load_images(path):
     for filename in glob.glob(path + "/*.jpg"):
         img = load_img(filename)
 
-        img = img.resize((400, 400))  # moze tu lepszy bedzie PCA
+        img = img.resize(DIMENSIONS)  # moze tu lepszy bedzie PCA
         img = np.asarray(img)
 
         image_list.append(img)
@@ -65,16 +67,16 @@ def adjust_order(images_list, image_names, labels):
 
 
 def save(images, labels):
-    with open('images400x400', 'wb') as f:
+    with open('datasets/images' + str(DIMENSIONS[0]) + 'x' + str(DIMENSIONS[1]), 'wb') as f:
         pickle.dump(images, f)
-    with open('labels', 'wb') as f:
+    with open('datasets/labels', 'wb') as f:
         pickle.dump(labels, f)
 
 
 def load_data():
-    with open('images', 'rb') as f:
+    with open('datasets/images', 'rb') as f:
         images = pickle.load(f)
-    with open('labels', 'rb') as f:
+    with open('datasets/labels', 'rb') as f:
         labels = pickle.load(f)
     return images, labels
 
@@ -91,7 +93,7 @@ def main():
     all_images = bathrooms + bedrooms + dining_rooms + houses + kitchens + living_rooms
     all_names = bathroom_names + bedroom_names + dining_room_names + house_names + kitchen_names + living_room_names
 
-    label_dict = load_label_dict('data/main_task_data/labels.csv')
+    label_dict = load_label_dict('labels.csv')
 
     images, labels = adjust_order(all_images, all_names, label_dict)
 

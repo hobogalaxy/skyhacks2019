@@ -20,17 +20,17 @@ BASE_LEARNING_RATE = 0.1
 LR_SCHEDULE = [(0.1, 30), (0.01, 45)]
 
 
-def preprocess(x, y):
-    x = tf.image.per_image_standardization(x)
-    return x, y
-
-
-def augmentation(x, y):
-    x = tf.image.resize_with_crop_or_pad(
-        x, HEIGHT + 8, WIDTH + 8)
-    x = tf.image.random_crop(x, [HEIGHT, WIDTH, NUM_CHANNELS])
-    x = tf.image.random_flip_left_right(x)
-    return x, y
+# def preprocess(x, y):
+#     x = tf.image.per_image_standardization(x)
+#     return x, y
+#
+#
+# def augmentation(x, y):
+#     x = tf.image.resize_with_crop_or_pad(
+#         x, HEIGHT + 8, WIDTH + 8)
+#     x = tf.image.random_crop(x, [HEIGHT, WIDTH, NUM_CHANNELS])
+#     x = tf.image.random_flip_left_right(x)
+#     return x, y
 
 
 def schedule(epoch):
@@ -51,13 +51,13 @@ train_dataset = tf.data.Dataset.from_tensor_slices((x, y))
 test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
 
 # tf.random.set_seed(22)
-train_dataset = train_dataset.map(augmentation).map(preprocess).shuffle(NUM_TRAIN_SAMPLES).batch(BS_PER_GPU * NUM_GPUS,
+train_dataset = train_dataset.shuffle(NUM_TRAIN_SAMPLES).batch(BS_PER_GPU * NUM_GPUS,
                                                                                                  drop_remainder=True)
-test_dataset = test_dataset.map(preprocess).batch(BS_PER_GPU * NUM_GPUS, drop_remainder=True)
+test_dataset = test_dataset.batch(BS_PER_GPU * NUM_GPUS, drop_remainder=True)
 
 input_shape = (32, 32, 3)
 img_input = tf.keras.layers.Input(shape=input_shape)
-opt = keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
+opt = keras.optimizers.SGD(lr=0.1, momentum=0.9)
 
 if NUM_GPUS == 1:
     model = resnet.resnet56(img_input=img_input, classes=NUM_CLASSES)
@@ -87,7 +87,7 @@ lr_schedule_callback = LearningRateScheduler(schedule)
 model.fit(train_dataset,
           epochs=NUM_EPOCHS,
           validation_data=test_dataset,
-          validation_freq=1,
+          steps_per_epoch=1,
           callbacks=[lr_schedule_callback])
 model.evaluate(test_dataset)
 
